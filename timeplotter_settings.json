@@ -1,0 +1,12 @@
+{
+	"split_by_measure":true,
+	"assume_four_four":false,
+	"sample_rate":44100,
+	"walk_length":8,
+	"tempo":120,
+	"beats_per_measure":4,
+	"falloff_power":0,
+	"theta_multiplier":1,
+	"display_plot":true,
+	"job_id":"default"
+}
