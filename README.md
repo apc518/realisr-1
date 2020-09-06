@@ -1,1 +1,8 @@
-timeplotter 0.0.0 by Andy Chamberlain
+Standalone python script for my app Realisr.
+This may be helpful if you want to run Realisr on big files, or of course if you want to just mess around with the code.
+
+To use this, simply put wavparser.py, realisr_settings.json, and realisr.py in a directory, and run `python realisr` in the directory.
+
+To change settings that are not part of the default prompt, simply edit realisr_settings.json.
+
+This python script is not meant to be a production application. This is just for tinkerers or people who want to user Realisr on giant files.

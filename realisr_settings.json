@@ -6,7 +6,8 @@
 	"tempo":120,
 	"beats_per_measure":4,
 	"falloff_power":0,
-	"theta_multiplier":1,
+	"angle_min":0,
+	"angle_max":360,
 	"display_plot":true,
 	"job_id":"default"
 }

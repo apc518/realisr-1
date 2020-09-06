@@ -1,4 +1,4 @@
-print("timeplotter.py started")
+print("realisr.py started")
 print("importing modules...")
 
 import os
@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from playsound import playsound
 
 import wavparser as wp
+
+settings = json.loads(open("realisr_settings.json", "r").read())
 
 class ClippingError(Exception):
 	pass
@@ -31,7 +33,7 @@ class WalkPoint():
 	def __repr__(self):
 		return "(" + str(self.x) + ", " + str(self.y) + ")"
 
-def splitAudio(audio_data, segments=8, theta_multiplier=1, subdivisions=1):
+def splitAudio(audio_data, segments=8, subdivisions=1):
 	"""returns a tuple containing the pieces of audio and the associated random walk"""
 	if type(audio_data) != list:
 		raise TypeError("audio_data argument must be a list")
@@ -49,16 +51,16 @@ def splitAudio(audio_data, segments=8, theta_multiplier=1, subdivisions=1):
 		for channel in _segment:
 			if len(channel) != len(_segment[0]):
 				raise ValueError("different channel lengths..  bruh")
-	return (split_audio, createRandomWalk(len(split_audio), theta_multiplier))
+	return (split_audio, createRandomWalk(len(split_audio)))
 
-def splitByMeasure(audio_data, sample_rate=44100, tempo=120, beats_per_measure=4, theta_multiplier=1):
+def splitByMeasure(audio_data, sample_rate=44100, tempo=120, beats_per_measure=4):
 	# add null samples to the end of audio_data to make it a whole number of measures
 	# then just call splitAudio with that number of measures
 	samples_per_measure = sample_rate * beats_per_measure * 60 / tempo # float, not int
 	for channel in audio_data:
 		for i in range(0, int(len(channel) % samples_per_measure)):
 			channel.append(0.0)
-	return splitAudio(audio_data, int(len(audio_data[0]) / samples_per_measure), theta_multiplier=theta_multiplier)
+	return splitAudio(audio_data, int(len(audio_data[0]) / samples_per_measure))
 
 def valueAtFloatIndex(lst, index):
 	"""list argument must be a list of floats or integers"""
@@ -105,12 +107,14 @@ def changeSpeed(audio_data, speed=1):
 			ret_audio[channel_idx].reverse()
 	return ret_audio
 
-def createRandomWalk(steps, theta_multiplier=1):
+def createRandomWalk(steps):
 	"""returns a list of points with length steps+1"""
 	initial_point = WalkPoint(0.0, 0.0)
 	walkpoints = [initial_point]
 	for i in range(0, steps):
-		theta = random.uniform(0, 2*math.pi*theta_multiplier)
+		theta_min = settings["angle_min"] * math.pi / 180
+		theta_max = settings["angle_max"] * math.pi / 180
+		theta = random.uniform(theta_min, theta_max)
 		if abs(theta - (math.pi / 2)) < 0.001 or abs(theta - (3*math.pi / 2)) < 0.001:
 			theta += 0.001
 		dx = random.uniform(1,2) * math.cos(theta)
@@ -142,7 +146,7 @@ def normalized(audio_data, ceiling=1):
 
 	return ret_audio
 
-def render(audio_data, theta_multiplier=0.5, tempo=120, beats_per_measure=4):
+def render(audio_data, tempo=120, beats_per_measure=4):
 	update_progress("rendering...")
 	"""
 	audio_data_in should be a list of lists of floats
@@ -150,17 +154,16 @@ def render(audio_data, theta_multiplier=0.5, tempo=120, beats_per_measure=4):
 	walk_length = settings["walk_length"]
 	sample_rate = settings["sample_rate"]
 	falloff_power = settings["falloff_power"]
-	theta_multiplier = settings["theta_multiplier"]
 	tempo = settings["tempo"]
 	beats_per_measure = settings["beats_per_measure"]
 
 	# split the audio into segments
 	update_progress("splitting audio...")
 	if settings["split_by_measure"]:
-		segments, random_walk = splitByMeasure(audio_data, sample_rate, tempo=tempo, beats_per_measure=beats_per_measure, theta_multiplier=theta_multiplier)
+		segments, random_walk = splitByMeasure(audio_data, sample_rate, tempo=tempo, beats_per_measure=beats_per_measure)
 		walk_length = len(segments) # not necessary but important to be clear on
 	else:
-		segments, random_walk = splitAudio(audio_data, walk_length, theta_multiplier=theta_multiplier)
+		segments, random_walk = splitAudio(audio_data, walk_length)
 
 	# shift everything over so the minimum x value is 0
 	x_offset = abs(min(random_walk).x)
@@ -265,7 +268,7 @@ def getUserInput(prompt, type, error, numrange=(float("-inf"), float("inf")), in
 
 def update_progress(message):
 	jobid = settings["job_id"]
-	print(f"timeplotter_{jobid}: " + message)
+	print(f"realisr_{jobid}: " + message)
 	if "jobs" in os.listdir():
 		if not jobid in os.listdir("jobs"):
 			open(f"jobs/{jobid}", "w")
@@ -274,10 +277,12 @@ def update_progress(message):
 			file.write(message)
 			file.truncate()
 
-def process(inpath, outpath, jobid="default", splitbymeasure=False, walklength=8, tempo=120, beatspermeasure=4, displayplot=False, falloffpower=0, thetamultiplier=1):
+def process(inpath, outpath, jobid="default", splitbymeasure=False, walklength=8, tempo=120, beatspermeasure=4, displayplot=False, falloffpower=0, anglerange=(0,360)):
 	"""	this wraps up the entire functionality of the script in one function
 		useful if you want to import this and use it from another script instead of
-		running this directly with the CLI
+		running this directly with the console app
+
+		jobid can be used to identify the progress messages of concurrent realisr processes
 	"""
 
 	settings["split_by_measure"] = splitbymeasure
@@ -286,7 +291,8 @@ def process(inpath, outpath, jobid="default", splitbymeasure=False, walklength=8
 	settings["beats_per_measure"] = beatspermeasure
 	settings["display_plot"] = displayplot
 	settings["falloff_power"] = falloffpower
-	settings["theta_multiplier"] = thetamultiplier
+	settings["angle_min"] = anglerange[0]
+	settings["angle_max"] = anglerange[1]
 	settings["job_id"] = jobid
 
 	update_progress("parsing wave file...")
@@ -296,12 +302,10 @@ def process(inpath, outpath, jobid="default", splitbymeasure=False, walklength=8
 	wp.save(time_plot_projection, outpath, samplerate=sample_rate)
 	update_progress("finished processing.")
 
-settings = json.loads(open("timeplotter_settings.json", "r").read())
-
 if __name__ == "__main__":
 	if not "output" in os.listdir():
 		os.mkdir("output")
-
+		
 	filename = input("filename: ")
 	if input("split by measure? ").lower() in ["yes", "y", "ye", "ys"]:
 		settings["split_by_measure"] = True
