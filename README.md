@@ -1,4 +1,4 @@
-Standalone python script for my app Realisr: https://chamberlainmusic.azurewebsites.net/realisr.
+Standalone python script for my app Realisr: https://chamberlainmusic.herokuapp.com/realisr.
 This may be helpful if you want to run Realisr on big files, or of course if you want to just mess around with the code.
 
 To use this, simply put wavparser.py, realisr_settings.json, and realisr.py in a directory, and run `python realisr` in the directory.
